@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Routines renfo et mobilité</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#6b3fd4">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout : écran unique type minuteur, une carte d'exercice au centre, commandes en bas, pensé pour le téléphone posé au sol */
+  --bg: #f2f0f7;
+  --surface: #ffffff;
+  --ink: #1b1726;
+  --muted: #625c72;
+  --accent: #6b3fd4;
+  --accent-ink: #ffffff;
+  --rest: #1c7c74;
+  --line: #dcd8e7;
+  --chip: #e8e4f2;
+  --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #13111b;
+    --surface: #1d1a28;
+    --ink: #ece9f4;
+    --muted: #a09ab3;
+    --accent: #b39dff;
+    --accent-ink: #170b33;
+    --rest: #45b8ac;
+    --line: #302b42;
+    --chip: #282337;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #13111b;
+  --surface: #1d1a28;
+  --ink: #ece9f4;
+  --muted: #a09ab3;
+  --accent: #b39dff;
+  --accent-ink: #170b33;
+  --rest: #45b8ac;
+  --line: #302b42;
+  --chip: #282337;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.45;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+a { color: var(--accent); }
+.wrap { max-width: 560px; margin: 0 auto; padding: 16px; min-height: 100%; display: flex; flex-direction: column; gap: 16px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; line-height: 1.05; margin: 0; text-wrap: balance; letter-spacing: 0.01em; }
+h1 { font-size: 2.1rem; }
+.lead { color: var(--muted); margin: 0; }
+.cards { display: grid; gap: 12px; }
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px; display: grid; gap: 6px; text-align: left; width: 100%;
+}
+.card.routine { grid-template-columns: 1fr auto; align-items: center; transition: transform .1s; }
+.card.routine:active { transform: scale(.99); }
+.card.routine h2 { font-size: 1.6rem; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 12px; color: var(--muted); font-size: .92rem; }
+.go { width: 48px; height: 48px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 1.3rem; font-weight: 700; }
+.settings { display: grid; gap: 10px; }
+.toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.toggle input { width: 22px; height: 22px; accent-color: var(--accent); }
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--chip); }
+.stepper output { font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: center; font-weight: 600; }
+.note { font-size: .88rem; color: var(--muted); margin: 0; }
+
+/* Lecteur */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ghost { background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.progress { height: 6px; background: var(--chip); border-radius: 99px; overflow: hidden; }
+.progress > div { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.counter { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .95rem; }
+.stage { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { background: var(--chip); border-radius: 99px; padding: 3px 10px; font-size: .88rem; font-weight: 600; }
+.chip.side { background: var(--accent); color: var(--accent-ink); }
+.chip.opt { border: 1px dashed var(--muted); background: transparent; }
+.exname { font-size: 2.3rem; }
+.target { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; color: var(--accent); }
+.how { margin: 0; }
+.tip { margin: 0; color: var(--muted); font-size: .95rem; }
+.tip strong { color: var(--ink); }
+.figbox { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px; display: grid; place-items: center; }
+.fig { width: min(100%, 300px); height: auto; display: block; }
+.fig polyline, .fig line, .fig circle { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.fg-floor { stroke: var(--line); stroke-width: 2; }
+.fg-p { stroke: var(--muted); stroke-width: 3; }
+.fg-b { stroke: var(--ink); stroke-width: 5; }
+.fg-a { stroke: var(--accent); stroke-width: 5.5; }
+.fig .fg-h { fill: var(--ink); stroke: none; }
+.fg-ar { stroke: var(--rest); stroke-width: 2.5; }
+.fg-c { stroke: var(--rest); stroke-width: 2.5; stroke-dasharray: 4 4; }
+.figcap { margin: 0; font-size: .82rem; color: var(--muted); text-align: center; }
+.feel { margin: 0; font-size: .95rem; }
+.feel strong { color: var(--rest); }
+.timer { display: grid; place-items: center; position: relative; margin: 4px auto; width: min(68vw, 250px); aspect-ratio: 1; }
+.timer svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.timer circle { fill: none; stroke-width: 10; }
+.timer .track { stroke: var(--chip); }
+.timer .arc { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .25s linear; }
+.timer.resting .arc { stroke: var(--rest); }
+.digits { font-family: var(--font-display); font-weight: 700; font-size: clamp(3.4rem, 18vw, 5rem); font-variant-numeric: tabular-nums; line-height: 1; }
+.timer .sub { position: absolute; bottom: 24%; color: var(--muted); font-size: .9rem; font-weight: 600; }
+.reps { font-family: var(--font-display); font-weight: 700; font-size: clamp(3.2rem, 16vw, 4.6rem); text-align: center; line-height: 1; margin: 10px 0 2px; }
+.reps small { display: block; font-size: 1.1rem; color: var(--muted); font-weight: 600; margin-top: 6px; }
+.restlabel { font-family: var(--font-display); font-size: 2.3rem; color: var(--rest); text-align: center; }
+.nextup { text-align: center; color: var(--muted); margin: 0; }
+.nextup strong { color: var(--ink); }
+.controls { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; position: sticky; bottom: 0; padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 75%, transparent); }
+.btn { border-radius: 14px; padding: 16px 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 700; min-height: 58px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-size: 1.15rem; }
+.btn.primary.rest { background: var(--rest); border-color: var(--rest); color: #fff; }
+.btn:disabled { opacity: .4; cursor: default; }
+.row2 { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.small { padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; font-size: .95rem; }
+.recap { display: grid; gap: 8px; }
+.recap h3 { font-size: 1.3rem; }
+.rxlist { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.rxlist li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--line); }
+.rxlist li:first-child { border-top: 0; }
+.rxlist li.sec { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; color: var(--accent); background: var(--chip); }
+.rx-dose { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; text-align: right; }
+.awake { font-size: .8rem; font-weight: 600; color: var(--rest); }
+.done { text-align: center; display: grid; gap: 12px; padding-top: 10vh; }
+.done .big { font-family: var(--font-display); font-size: 3rem; font-weight: 700; color: var(--accent); }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="home">
+  <header style="display:grid;gap:6px">
+    <h1>Routines renfo et mobilité</h1>
+    <p class="lead">Choisis ta séance : l'appli te guide exercice par exercice, compte les temps de maintien et les repos, et bipe à la fin de chaque chrono.</p>
+  </header>
+  <div class="cards" id="routineList"></div>
+  <section class="card settings" aria-label="Réglages">
+    <h3 style="font-size:1.25rem">Réglages</h3>
+    <label class="toggle" for="optSound"><span>Bips sonores</span><input type="checkbox" id="optSound" checked></label>
+    <label class="toggle" for="optAuto"><span>Lancer seul les exercices chronométrés (après 5 s de préparation)</span><input type="checkbox" id="optAuto" checked></label>
+    <div class="toggle"><span>Repos entre les séries de renfo</span>
+      <div class="stepper"><button type="button" id="restMinus" aria-label="Moins 15 secondes">−</button><output id="restVal">75 s</output><button type="button" id="restPlus" aria-label="Plus 15 secondes">+</button></div>
+    </div>
+    <p class="note">Garde l'écran allumé pendant la séance. Les démonstrations s'ouvrent dans ton navigateur.</p>
+  </section>
+</div>
+
+<div class="wrap" id="player" hidden>
+  <div class="topbar">
+    <button type="button" class="ghost" id="quitBtn">Quitter</button>
+    <span style="display:grid;justify-items:end;gap:2px"><span class="counter" id="counter"></span><span class="awake" id="awake"></span></span>
+  </div>
+  <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+  <main class="stage" id="stage" aria-live="polite"></main>
+  <div class="controls">
+    <button type="button" class="btn" id="prevBtn">Précédent</button>
+    <button type="button" class="btn primary" id="mainBtn">Démarrer</button>
+    <button type="button" class="btn" id="nextBtn">Suivant</button>
+  </div>
+</div>
+
+<script>
+const NASM = "https://www.nasm.org/resource-center/";
+const ROUTINES = [
+  {
+    id: "renfo-a", name: "Renfo A", when: "Lundi · jambes et chevilles", kind: "renfo",
+    ex: [
+      { name: "Squat goblet", sets: 3, reps: 10, how: "Pieds largeur d'épaules, kettlebell tenu contre la poitrine. Descends en 3 s en poussant les hanches en arrière, jusqu'à cuisses parallèles au sol. Remonte en poussant dans les talons.", tip: "Les genoux ne rentrent pas, le dos reste droit.", demo: NASM + "exercise-library/goblet-squat" },
+      { name: "Fente bulgare", sets: 3, reps: 8, perSide: true, sideWord: "jambe", how: "Pied arrière posé sur une chaise ou un canapé, pied avant un grand pas devant. Descends verticalement jusqu'à ce que le genou arrière frôle le sol. Débute sans charge.", tip: "Ne te penche pas sur le côté, genou avant dans l'axe.", demo: NASM + "exercise-library/bulgarian-split-squat" },
+      { name: "Soulevé de terre sur une jambe", sets: 3, reps: 8, perSide: true, sideWord: "jambe d'appui", how: "Kettlebell dans la main opposée à la jambe d'appui. Bascule le buste en tendant la jambe libre derrière toi, dos plat, genou d'appui légèrement fléchi. Remonte en serrant la fesse.", tip: "Dos plat, la hanche de la jambe libre ne s'ouvre pas vers le côté.", demo: "https://www.physitrack.com/exercise-library/how-to-perform-the-single-leg-romanian-deadlifts", rest: 60 },
+      { name: "Mollets jambe tendue", sets: 3, reps: 15, how: "Avant du pied sur une marche, talon dans le vide, une main au mur. Monte sur la pointe, tiens 1 s, redescends en 3 s sous le niveau de la marche. Débute sur deux pieds.", tip: "Pas de rebond en bas.", demo: "https://uk.physitrack.com/home-exercise-video/calf-raise-on-step", rest: 45 },
+      { name: "Mollets genou fléchi", sets: 3, reps: 15, how: "Même mouvement que le précédent, mais le genou reste fléchi pendant toute la montée et la descente.", tip: "Le genou reste plié du début à la fin.", demo: "https://au.physitrack.com/home-exercise-video/calf-raise-on-step", rest: 45 },
+      { name: "Step-down lent", sets: 3, reps: 8, perSide: true, sideWord: "jambe", how: "Debout sur une marche, sur une jambe. Descends lentement l'autre pied jusqu'à effleurer le sol avec le talon, puis remonte.", tip: "Le genou ne rentre pas, le bassin reste horizontal.", demo: "https://library.theprehabguys.com/vimeo-video/step-ups-and-step-downs/", rest: 60 },
+      { name: "Équilibre sur une jambe", sets: 3, hold: 30, perSide: true, sideWord: "pied", how: "Pieds nus, sur une jambe, genou légèrement fléchi. Progression : yeux fermés, puis sur un coussin.", tip: "Ne bloque pas le genou.", rest: 15 },
+      { name: "Élastique cheville, 4 directions", sets: 2, reps: 15, perSide: true, sideWord: "cheville", repsLabel: "par direction", how: "Assis jambe tendue, élastique autour de l'avant-pied. Tire le pied vers toi, pousse, tourne vers l'intérieur puis vers l'extérieur contre la résistance : 15 fois dans chaque direction.", tip: "C'est la cheville qui bouge, pas la jambe.", rest: 30 },
+      { name: "Sautillements", sets: 3, hold: 20, optional: "À partir de janvier", how: "Petits sauts sur place sur l'avant du pied, d'abord sur deux pieds, puis sur un pied.", tip: "Réceptions silencieuses, les talons ne tapent pas.", rest: 40 },
+      { name: "Squat goblet excentrique", sets: 3, reps: 6, optional: "Spécial ski, janvier-février", how: "Comme le squat goblet, mais la descente dure 5 secondes. Remonte normalement.", tip: "Compte les 5 s à voix haute.", demo: NASM + "exercise-library/goblet-squat" },
+      { name: "Chaise contre le mur", sets: 3, hold: 45, optional: "Spécial ski, janvier-février", how: "Dos au mur, cuisses parallèles au sol, genoux au-dessus des chevilles.", tip: "Respire, ne retiens pas ton souffle.", rest: 45 }
+    ]
+  },
+  {
+    id: "renfo-b", name: "Renfo B", when: "Mardi midi · tronc et haut du corps", kind: "renfo",
+    ex: [
+      { name: "Pompes", sets: 3, reps: "10-15", how: "Mains sous les épaules, corps gainé de la tête aux pieds. Descends la poitrine près du sol, remonte. Pour débuter : sur les genoux ou les mains sur une table.", tip: "Le bassin ne s'affaisse pas, les coudes ne s'écartent pas trop.", rest: 60 },
+      { name: "Rowing à l'élastique", sets: 3, reps: 12, how: "Élastique accroché à une poignée de porte à hauteur de poitrine. Tire les mains vers toi, coudes le long du corps, et serre les omoplates 1 s.", tip: "Ne hausse pas les épaules.", demo: "https://ca.physitrack.com/home-exercise-video/high-row-in-standing", rest: 60 },
+      { name: "Pallof press", sets: 3, reps: 10, perSide: true, sideWord: "côté", how: "Élastique accroché sur le côté, à hauteur de poitrine. Mains contre le sternum, tends les bras devant toi et tiens 2 s sans laisser le buste tourner.", tip: "Ne pivote pas vers l'accroche.", demo: NASM + "blog/training/best-abs-exercises", rest: 45 },
+      { name: "Dead bug", sets: 3, reps: 10, repsLabel: "au total, 5 par côté", how: "Sur le dos, bras tendus vers le plafond, genoux à 90° au-dessus des hanches. Bas du dos plaqué au sol, tends lentement un bras et la jambe opposée, reviens, change.", tip: "Le bas du dos ne décolle pas, respire.", demo: NASM + "exercise-library/dead-bug", rest: 45 },
+      { name: "Gainage latéral", sets: 3, hold: 40, perSide: true, sideWord: "côté", how: "Sur le côté, coude sous l'épaule, corps aligné, bassin haut. Pour débuter : genoux au sol.", tip: "Le bassin ne tombe pas et ne part pas en arrière.", demo: NASM + "exercise-library/side-plank", rest: 30 },
+      { name: "Pont fessier sur une jambe", sets: 3, reps: 12, perSide: true, sideWord: "jambe", how: "Sur le dos, un pied au sol, l'autre jambe tendue. Monte le bassin en serrant la fesse, tiens 2 s en haut. Débute sur deux jambes.", tip: "Serre la fesse au lieu de cambrer le dos.", rest: 45 },
+      { name: "Rotations externes d'épaule", sets: 2, reps: 15, how: "Coudes collés au corps, fléchis à 90°, élastique dans les mains. Écarte les mains vers l'extérieur sans décoller les coudes.", tip: "Les coudes restent collés.", demo: "https://au.physitrack.com/home-exercise-video/band-resisted-shoulder-external-rotation", rest: 30 }
+    ]
+  },
+  {
+    id: "mobilite", name: "Mobilité du soir", when: "La plupart des soirs · 15 min", kind: "mobilite",
+    ex: [
+      { name: "Genou au mur", sets: 2, reps: 10, perSide: true, sideWord: "cheville", how: "Face au mur, pied à environ 10 cm. Amène le genou toucher le mur sans décoller le talon. Recule le pied quand c'est facile.", tip: "Le talon reste au sol.", demo: "https://au.physitrack.com/home-exercise-video/ankle-mobility---knee-to-wall" },
+      { name: "Étirement du psoas", sets: 1, hold: 60, perSide: true, sideWord: "jambe arrière", how: "Un genou au sol sur un coussin, l'autre pied devant. Serre la fesse de la jambe arrière et avance le bassin. Plus intense : pied arrière contre un canapé.", tip: "Serre la fesse, ne cambre pas.", demo: "https://ca.physitrack.com/home-exercise-video/hip-flexor-kneeling-stretch" },
+      { name: "Rotations du dos à quatre pattes", sets: 1, reps: 10, perSide: true, sideWord: "côté", how: "Une main derrière la tête, ouvre le coude vers le plafond en suivant du regard.", tip: "Le bassin reste immobile." },
+      { name: "Meilleur étirement du monde", sets: 1, reps: 5, perSide: true, sideWord: "jambe avant", how: "Grande fente basse, mains au sol à l'intérieur du pied avant. Descends le coude vers la cheville avant, puis ouvre le bras tendu vers le plafond en tournant le buste.", tip: "Lentement, en expirant à l'ouverture." },
+      { name: "Bébé heureux", sets: 1, hold: 50, how: "Sur le dos, genoux vers les aisselles, attrape l'extérieur des pieds. Tire doucement les genoux vers le sol, bassin au sol. Bascule légèrement de droite à gauche.", tip: "Le bas du dos reste posé." },
+      { name: "Cercles de hanche à quatre pattes", sets: 1, reps: 5, perSide: true, sideWord: "hanche", repsLabel: "cercles dans chaque sens", how: "À quatre pattes, dos immobile. Monte le genou vers la poitrine, ouvre-le sur le côté, tourne-le vers l'arrière puis ramène-le, en faisant le plus grand cercle possible.", tip: "Seule la hanche bouge, pas le bassin." },
+      { name: "Étirement du mollet", sets: 1, hold: 45, perSide: true, sideWord: "jambe", how: "Mains au mur, jambe arrière tendue, talon au sol, avance doucement le bassin.", tip: "Pied arrière bien dans l'axe." },
+      { name: "Étirement des ischios", sets: 1, hold: 45, perSide: true, sideWord: "jambe", how: "Talon posé sur une marche, jambe tendue, bascule le buste vers l'avant dos plat.", tip: "Dos plat, on bascule depuis les hanches." },
+      { name: "Ouverture des épaules", sets: 1, hold: 45, how: "Avant-bras contre un encadrement de porte, avance doucement la poitrine.", tip: "Les épaules restent basses." }
+    ]
+  },
+  {
+    id: "hanches", name: "Ouverture des hanches", when: "3 fois par semaine · 15 min", kind: "mobilite",
+    ex: [
+      { name: "Rotations en 90/90", sets: 2, reps: 8, repsLabel: "de chaque côté", how: "Assis, les deux genoux fléchis à 90°, mains au sol derrière toi. Bascule les genoux d'un côté puis de l'autre, buste droit. Un coussin sous les fesses si c'est trop dur.", tip: "Le buste reste droit.", demo: "https://www.ama-assn.org/public-health/prevention-wellness/your-hips-dont-lie-you-need-these-3-stretches" },
+      { name: "90/90 tenu", sets: 2, hold: 45, perSide: true, sideWord: "jambe avant", how: "En position 90/90, buste droit, penche-toi vers l'avant au-dessus du tibia de devant, dos plat.", tip: "Dos plat, pas d'arrondi." },
+      { name: "Pigeon (ou figure 4 allongé)", sets: 2, hold: 50, perSide: true, sideWord: "jambe pliée", how: "Pigeon : une jambe pliée devant toi, l'autre tendue derrière, bassin droit. Figure 4 : sur le dos, une cheville sur le genou opposé, tire la cuisse vers toi.", tip: "Étirement, jamais douleur au genou.", demo: "https://www.ama-assn.org/public-health/prevention-wellness/your-hips-dont-lie-you-need-these-3-stretches" },
+      { name: "Grenouille à quatre pattes", sets: 1, hold: 45, how: "À quatre pattes, genoux très écartés, pieds dans l'alignement des genoux. Bascule doucement les fesses vers l'arrière 10 fois, puis tiens la position jusqu'à la fin du chrono.", tip: "Va doucement, sans forcer." },
+      { name: "Squat profond tenu", sets: 3, hold: 30, how: "Pieds un peu plus larges que les épaules, pointes légèrement ouvertes. Descends le plus bas possible talons au sol, coudes qui poussent les genoux vers l'extérieur.", tip: "Tiens-toi à un pied de table au début.", demo: "https://us.physitrack.com/home-exercise-video/frog-stretch" },
+      { name: "Squat cosaque", sets: 2, reps: 6, repsLabel: "par côté", how: "Pieds très écartés. Décale-toi sur une jambe en la fléchissant, l'autre reste tendue, pointe vers le plafond. Garde le talon de la jambe fléchie au sol.", tip: "Tiens une chaise au début.", demo: "https://barbend.com/cossack-squat/" },
+      { name: "Papillon", sets: 1, hold: 45, how: "Assis, plantes des pieds collées, dos droit. Laisse les genoux descendre vers le sol, sans forcer avec les mains.", tip: "Dos droit." },
+      { name: "Gainage Copenhague court", sets: 3, hold: 20, perSide: true, sideWord: "côté", how: "Gainage latéral avec le genou du dessus posé sur une chaise ou un banc, la jambe du dessous dans le vide.", tip: "Le bassin reste haut.", demo: "https://www.physitrack.com/exercise-library/how-to-perform-the-copenhagen-plank" }
+    ]
+  }
+];
+
+const DEMOS = {
+  "Rotations du dos à quatre pattes": "https://ie.physitrack.com/home-exercise-video/quadruped-thoracic-rotation",
+  "Meilleur étirement du monde": "https://library.theprehabguys.com/vimeo-video/worlds-greatest-stretch-2/",
+  "Bébé heureux": "https://nz.physitrack.com/home-exercise-video/happy-baby-pose",
+  "Cercles de hanche à quatre pattes": "https://library.theprehabguys.com/vimeo-video/quadruped-hip-car/",
+  "Étirement du mollet": "https://us.physitrack.com/home-exercise-video/calf-stretch-%2528gastrocnemius%2529",
+  "Étirement des ischios": "https://uk.physitrack.com/home-exercise-video/standing-elevated-hamstring-stretch",
+  "Ouverture des épaules": "https://us.physitrack.com/home-exercise-video/pectoralis-stretching",
+  "90/90 tenu": "https://www.ama-assn.org/public-health/prevention-wellness/your-hips-dont-lie-you-need-these-3-stretches",
+  "Grenouille à quatre pattes": "https://us.physitrack.com/home-exercise-video/quadruped-rock-back---hip-adductor-stretch",
+  "Papillon": "https://us.physitrack.com/home-exercise-video/seated-hip-adductor-stretch"
+};
+ROUTINES.forEach((r) => r.ex.forEach((ex) => { if (!ex.demo && DEMOS[ex.name]) ex.demo = DEMOS[ex.name]; }));
+(function chainMobility() {
+  const a = ROUTINES.find((r) => r.id === "renfo-a"), mob = ROUTINES.find((r) => r.id === "mobilite");
+  a.ex.forEach((ex) => { ex.section = "Renfo"; });
+  a.ex.push(...mob.ex.map((ex) => Object.assign({}, ex, { kind: "mobilite", section: "Mobilité" })));
+  a.when = "Lundi soir · jambes et chevilles, puis mobilité";
+})();
+const EQUIP = {
+  "Squat goblet": ["Kettlebell"], "Fente bulgare": ["Chaise ou canapé"], "Soulevé de terre sur une jambe": ["Kettlebell"],
+  "Mollets jambe tendue": ["Marche d'escalier"], "Mollets genou fléchi": ["Marche d'escalier"], "Step-down lent": ["Marche d'escalier"],
+  "Équilibre sur une jambe": ["Coussin (pour progresser)"], "Élastique cheville, 4 directions": ["Élastique"],
+  "Squat goblet excentrique": ["Kettlebell"], "Chaise contre le mur": ["Mur"],
+  "Rowing à l'élastique": ["Élastique", "Poignée de porte"], "Pallof press": ["Élastique", "Poignée de porte"],
+  "Dead bug": ["Tapis"], "Gainage latéral": ["Tapis"], "Pont fessier sur une jambe": ["Tapis"], "Rotations externes d'épaule": ["Élastique"],
+  "Genou au mur": ["Mur"], "Étirement du psoas": ["Coussin"], "Rotations du dos à quatre pattes": ["Tapis"],
+  "Meilleur étirement du monde": ["Tapis"], "Bébé heureux": ["Tapis"], "Cercles de hanche à quatre pattes": ["Tapis"],
+  "Étirement du mollet": ["Mur"], "Étirement des ischios": ["Marche d'escalier"], "Ouverture des épaules": ["Encadrement de porte"],
+  "Rotations en 90/90": ["Tapis"], "90/90 tenu": ["Tapis"], "Pigeon (ou figure 4 allongé)": ["Tapis"], "Grenouille à quatre pattes": ["Tapis"],
+  "Squat profond tenu": ["Pied de table (au début)"], "Squat cosaque": ["Chaise (au début)"], "Papillon": ["Tapis"], "Gainage Copenhague court": ["Chaise ou banc"]
+};
+/*FIGS-START*/
+const FIGS = {
+  "Genou au mur": { h: [121, 22], b: [[118, 34, 112, 66], [112, 66, 92, 90, 74, 112], [112, 66, 146, 86], [118, 38, 150, 46], [124, 112, 136, 112]], a: [[146, 86, 124, 112]], p: [[152, 14, 152, 112]], ar: [[126, 74, 142, 74]] },
+  "Étirement du psoas": { h: [107, 36], b: [[104, 84, 106, 48], [104, 84, 134, 84, 134, 112], [134, 112, 146, 112], [106, 50, 94, 66, 104, 80], [80, 110, 50, 110]], a: [[80, 110, 104, 84]], ar: [[98, 122, 124, 122]] },
+  "Rotations du dos à quatre pattes": { h: [143, 72], b: [[130, 78, 80, 78], [80, 78, 80, 112, 50, 112], [130, 78, 130, 112]], a: [[130, 78, 122, 52, 138, 64]], ar: [[110, 64, 110, 42]] },
+  "Meilleur étirement du monde": { h: [144, 64], b: [[104, 90, 132, 72], [104, 90, 140, 84, 140, 112], [140, 112, 152, 112], [104, 90, 78, 100, 50, 110], [132, 72, 126, 112]], a: [[132, 72, 126, 30]], ar: [[112, 58, 112, 36]] },
+  "Bébé heureux": { h: [48, 104], b: [[58, 106, 110, 106], [64, 104, 84, 90, 100, 58]], a: [[110, 106, 94, 84, 100, 54], [100, 54, 108, 50]], ar: [[118, 72, 118, 92]] },
+  "Cercles de hanche à quatre pattes": { h: [143, 72], b: [[130, 78, 80, 78], [130, 78, 130, 112], [80, 78, 84, 112, 54, 112]], a: [[80, 78, 60, 62, 42, 74]], c: [[60, 62, 15]] },
+  "Étirement du mollet": { h: [141, 38], b: [[136, 50, 120, 80], [136, 50, 160, 48], [120, 80, 140, 94, 136, 112], [136, 112, 148, 112]], a: [[120, 80, 80, 112], [80, 112, 92, 112]], p: [[162, 14, 162, 112]] },
+  "Étirement des ischios": { h: [139, 34], b: [[104, 62, 128, 42], [104, 62, 104, 112], [104, 112, 116, 112], [128, 44, 134, 72]], a: [[104, 62, 136, 98], [136, 98, 140, 88]], p: [[128, 99, 164, 99, 164, 112]] },
+  "Ouverture des épaules": { h: [104, 24], b: [[106, 38, 104, 72], [104, 72, 98, 112], [104, 72, 116, 92, 112, 112]], a: [[106, 38, 120, 38, 120, 18]], p: [[123, 8, 123, 112]], ar: [[78, 52, 96, 52]] },
+  "Rotations en 90/90": { h: [100, 32], b: [[100, 46, 100, 90], [100, 48, 78, 106], [100, 90, 62, 100, 56, 86]], a: [[100, 90, 140, 98, 106, 108]], ar: [[104, 122, 134, 122], [96, 122, 66, 122]] },
+  "90/90 tenu": { h: [131, 48], b: [[100, 90, 122, 60], [122, 62, 144, 104], [100, 90, 62, 100, 56, 86]], a: [[100, 90, 140, 98, 106, 108]] },
+  "Pigeon (ou figure 4 allongé)": { h: [115, 50], b: [[104, 98, 112, 62], [112, 64, 130, 108], [104, 98, 46, 110]], a: [[104, 98, 140, 104, 118, 110]] },
+  "Grenouille à quatre pattes": { h: [100, 58], b: [[86, 72, 114, 72], [88, 72, 86, 110], [112, 72, 114, 110]], a: [[94, 82, 54, 110, 48, 94], [106, 82, 146, 110, 152, 94]], ar: [[70, 122, 46, 122], [130, 122, 154, 122]] },
+  "Squat profond tenu": { h: [110, 50], b: [[92, 96, 106, 62], [106, 64, 122, 84, 116, 70], [104, 112, 118, 112]], a: [[92, 96, 126, 88, 104, 112]] },
+  "Squat cosaque": { h: [84, 44], b: [[82, 90, 84, 56], [84, 58, 104, 68], [84, 58, 64, 70], [78, 90, 52, 86, 62, 112], [62, 112, 50, 112]], a: [[86, 90, 150, 110, 154, 98]] },
+  "Papillon": { h: [100, 36], b: [[100, 50, 100, 92], [100, 52, 80, 78, 98, 104], [100, 52, 120, 78, 102, 104]], a: [[100, 92, 60, 100, 100, 108], [100, 92, 140, 100, 100, 108]], ar: [[52, 78, 52, 94], [148, 78, 148, 94]] },
+  "Gainage Copenhague court": { h: [40, 74], b: [[50, 84, 96, 82], [50, 84, 50, 112, 68, 112], [96, 84, 122, 96, 146, 100], [52, 84, 74, 70, 90, 80]], a: [[96, 82, 128, 74, 152, 72]], p: [[118, 80, 162, 80], [124, 80, 124, 112], [156, 80, 156, 112]] }
+};
+const FEEL = {
+  "Genou au mur": "un étirement en bas du mollet et un blocage doux à l'avant de la cheville. Exemple de repère : genou au mur avec le gros orteil à 10 cm.",
+  "Étirement du psoas": "un étirement à l'avant de la hanche et en haut de la cuisse de la jambe arrière, pas dans le bas du dos.",
+  "Rotations du dos à quatre pattes": "le milieu du dos qui tourne, entre les omoplates. Le bas du dos ne bouge presque pas.",
+  "Meilleur étirement du monde": "l'aine de la jambe arrière, la fesse de la jambe avant, puis le dos qui s'ouvre quand le bras monte.",
+  "Bébé heureux": "l'intérieur des cuisses et le bas du dos qui se relâchent.",
+  "Cercles de hanche à quatre pattes": "la hanche qui travaille en bout de course, comme si le genou dessinait un grand cercle sur un mur.",
+  "Étirement du mollet": "le haut du mollet de la jambe arrière.",
+  "Étirement des ischios": "l'arrière de la cuisse de la jambe tendue, pas derrière le genou.",
+  "Ouverture des épaules": "l'avant de l'épaule et le pectoral, sans pincement.",
+  "Rotations en 90/90": "les hanches qui tournent : un côté s'ouvre vers l'extérieur pendant que l'autre se ferme.",
+  "90/90 tenu": "la fesse et l'extérieur de la hanche de la jambe avant.",
+  "Pigeon (ou figure 4 allongé)": "la fesse de la jambe pliée, profondément. Rien dans le genou.",
+  "Grenouille à quatre pattes": "l'intérieur des deux cuisses, de plus en plus quand les fesses reculent.",
+  "Squat profond tenu": "les hanches, les chevilles et le bas du dos qui s'étirent, talons posés.",
+  "Squat cosaque": "l'intérieur de la cuisse de la jambe tendue et la hanche de la jambe fléchie.",
+  "Papillon": "l'intérieur des cuisses, près de l'aine.",
+  "Gainage Copenhague court": "l'intérieur de la cuisse du dessus et les abdos sur le côté, qui travaillent fort."
+};
+function figSVG(name) {
+  const f = FIGS[name]; if (!f) return "";
+  const pl = (arr, cls) => (arr || []).map((p) => `<polyline class="${cls}" points="${p.join(" ")}"/>`).join("");
+  const arrows = (f.ar || []).map((a) => {
+    const ang = Math.atan2(a[3] - a[1], a[2] - a[0]); const L = 7;
+    const x1 = a[2] - L * Math.cos(ang - 0.5), y1 = a[3] - L * Math.sin(ang - 0.5);
+    const x2 = a[2] - L * Math.cos(ang + 0.5), y2 = a[3] - L * Math.sin(ang + 0.5);
+    return `<polyline class="fg-ar" points="${a[0]} ${a[1]} ${a[2]} ${a[3]}"/><polyline class="fg-ar" points="${x1.toFixed(1)} ${y1.toFixed(1)} ${a[2]} ${a[3]} ${x2.toFixed(1)} ${y2.toFixed(1)}"/>`;
+  }).join("");
+  const circles = (f.c || []).map((c) => `<circle class="fg-c" cx="${c[0]}" cy="${c[1]}" r="${c[2]}"/>`).join("");
+  return `<svg class="fig" viewBox="20 4 160 126" role="img" aria-label="Schéma : ${name}"><line class="fg-floor" x1="24" y1="115" x2="176" y2="115"/>${pl(f.p, "fg-p")}${pl(f.b, "fg-b")}${pl(f.a, "fg-a")}<circle class="fg-h" cx="${f.h[0]}" cy="${f.h[1]}" r="8"/>${circles}${arrows}</svg>`;
+}
+/*FIGS-END*/
+
+const SIDES = ["gauche", "droite"];
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("routines:" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("routines:" + k, JSON.stringify(v)); } catch (e) {} }
+};
+const settings = { sound: store.get("sound", true), auto: store.get("auto", true), rest: store.get("rest", 75) };
+
+const $ = (id) => document.getElementById(id);
+const fmt = (s) => { s = Math.max(0, Math.ceil(s)); const m = Math.floor(s / 60); const r = s % 60; return m ? m + ":" + String(r).padStart(2, "0") : String(r); };
+
+const kindOf = (r, ex) => ex.kind || r.kind;
+function restFor(r, ex) {
+  if (kindOf(r, ex) === "mobilite") return 0;
+  return ex.rest != null ? Math.min(ex.rest, settings.rest) : settings.rest;
+}
+function buildSteps(r) {
+  const steps = [];
+  r.ex.forEach((ex, ei) => {
+    const sides = ex.perSide ? SIDES : [null];
+    for (let s = 1; s <= ex.sets; s++) {
+      sides.forEach((side, si) => {
+        steps.push({ type: "work", ex, ei, set: s, side });
+        const lastSide = si === sides.length - 1;
+        if (!lastSide) {
+          steps.push({ type: "rest", dur: ex.hold ? 8 : 5, label: "Change de côté", ei });
+        }
+      });
+      if (s < ex.sets) {
+        const d = kindOf(r, ex) === "mobilite" ? 10 : restFor(r, ex);
+        steps.push({ type: "rest", dur: d, label: "Repos", ei });
+      }
+    }
+    if (ei < r.ex.length - 1) {
+      const nx = r.ex[ei + 1];
+      if (nx.section && nx.section !== ex.section) steps.push({ type: "rest", dur: 45, label: "Place à la mobilité", ei, transition: true });
+      else steps.push({ type: "rest", dur: kindOf(r, nx) === "mobilite" ? 10 : 30, label: "Exercice suivant", ei, transition: true });
+    }
+  });
+  return steps;
+}
+function estimateMin(r) {
+  let t = 0;
+  buildSteps(r).forEach((st) => {
+    if (r.ex[st.ei] && r.ex[st.ei].optional) return; // les optionnels ne comptent pas dans la durée
+    if (st.type === "rest") t += st.dur;
+    else t += st.ex.hold ? st.ex.hold + (settings.auto ? 5 : 3) : (typeof st.ex.reps === "number" ? st.ex.reps * 3.5 : 40);
+  });
+  return Math.round(t / 60);
+}
+
+/* Accueil */
+function renderHome() {
+  const list = $("routineList");
+  list.innerHTML = "";
+  ROUTINES.forEach((r) => {
+    const last = store.get("last:" + r.id, null);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "card routine";
+    b.innerHTML = `<div style="display:grid;gap:4px"><h2>${r.name}</h2><div class="meta"><span>${r.when}</span><span>${r.ex.length} exercices</span><span>env. ${estimateMin(r)} min</span>${last ? `<span>Dernière fois : ${last}</span>` : ""}</div></div><span class="go" aria-hidden="true">›</span>`;
+    b.setAttribute("aria-label", "Lancer " + r.name);
+    b.addEventListener("click", () => start(r));
+    list.appendChild(b);
+  });
+  $("optSound").checked = settings.sound;
+  $("optAuto").checked = settings.auto;
+  $("restVal").textContent = settings.rest + " s";
+}
+$("optSound").addEventListener("change", (e) => { settings.sound = e.target.checked; store.set("sound", settings.sound); });
+$("optAuto").addEventListener("change", (e) => { settings.auto = e.target.checked; store.set("auto", settings.auto); renderHome(); });
+$("restMinus").addEventListener("click", () => { settings.rest = Math.max(30, settings.rest - 15); store.set("rest", settings.rest); renderHome(); });
+$("restPlus").addEventListener("click", () => { settings.rest = Math.min(180, settings.rest + 15); store.set("rest", settings.rest); renderHome(); });
+
+/* Son */
+let audio = null;
+function beep(freq = 880, dur = 0.12, vol = 0.25) {
+  if (!settings.sound) return;
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === "suspended") audio.resume();
+    const o = audio.createOscillator(); const g = audio.createGain();
+    o.frequency.value = freq; o.type = "sine";
+    g.gain.setValueAtTime(vol, audio.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + dur);
+    o.connect(g); g.connect(audio.destination);
+    o.start(); o.stop(audio.currentTime + dur);
+  } catch (e) {}
+}
+function endBeep() { beep(988, 0.18); setTimeout(() => beep(1319, 0.3), 200); try { navigator.vibrate && navigator.vibrate([200, 80, 200]); } catch (e) {} }
+
+/* Écran allumé */
+let wakeLock = null;
+function showAwake(on) { const el = $("awake"); if (el) { el.textContent = on ? "Écran maintenu allumé" : "Veille non bloquée : règle la mise en veille du téléphone"; el.style.color = on ? "" : "var(--muted)"; } }
+async function keepAwake() {
+  if (!("wakeLock" in navigator)) { showAwake(false); return; }
+  try {
+    if (wakeLock && !wakeLock.released) { showAwake(true); return; }
+    wakeLock = await navigator.wakeLock.request("screen");
+    showAwake(true);
+    wakeLock.addEventListener("release", () => { if (run.routine && document.visibilityState === "visible") keepAwake(); });
+  } catch (e) { wakeLock = null; showAwake(false); }
+}
+function releaseAwake() { const w = wakeLock; wakeLock = null; try { w && w.release(); } catch (e) {} }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && run.routine) keepAwake(); });
+
+/* Lecteur */
+const run = { routine: null, steps: [], idx: 0, timer: null, startedAt: 0 };
+// timer: { total, endAt, remaining, running, phase: 'prep'|'work'|'rest' }
+
+function dose(ex) {
+  const amount = ex.hold ? ex.hold + " s" : ex.reps + "";
+  const per = ex.repsLabel ? " " + ex.repsLabel : (ex.perSide ? " par " + (ex.sideWord || "côté") : "");
+  return (ex.sets > 1 ? ex.sets + " × " : "") + amount + per;
+}
+function equipmentFor(r) {
+  const need = new Map();
+  r.ex.forEach((ex) => (EQUIP[ex.name] || []).forEach((it) => {
+    const opt = !!ex.optional;
+    need.set(it, need.has(it) ? need.get(it) && opt : opt);
+  }));
+  return [...need.entries()];
+}
+function start(r) {
+  beep(660, 0.05, 0.01); // déverrouille l'audio sur ce clic
+  run.routine = r; run.steps = []; run.idx = 0;
+  $("home").hidden = true; $("player").hidden = false;
+  keepAwake();
+  renderRecap(r);
+  window.scrollTo(0, 0);
+}
+function renderRecap(r) {
+  stopTimer();
+  $("counter").textContent = "";
+  $("bar").style.width = "0%";
+  const eq = equipmentFor(r);
+  const eqHTML = eq.length
+    ? `<div class="chips">${eq.map(([it, opt]) => `<span class="chip${opt ? " opt" : ""}">${it}${opt ? " · optionnel" : ""}</span>`).join("")}</div>`
+    : `<p class="note">Aucun matériel nécessaire.</p>`;
+  let rows = "", section = null;
+  r.ex.forEach((ex) => {
+    if (ex.section && ex.section !== section) { section = ex.section; rows += `<li class="sec">${section}</li>`; }
+    rows += `<li><span class="rx-name">${ex.name}${ex.optional ? ` <span class="chip opt">optionnel</span>` : ""}</span><span class="rx-dose">${dose(ex)}</span></li>`;
+  });
+  $("stage").innerHTML = `<div class="chips"><span class="chip">${r.when}</span></div><h2 class="exname">${r.name}</h2>
+    <p class="target">${r.ex.length} exercices · env. ${estimateMin(r)} min</p>
+    <section class="recap"><h3>Matériel</h3>${eqHTML}</section>
+    <section class="recap"><h3>Déroulé</h3><ol class="rxlist">${rows}</ol></section>
+    <p class="note">Les exercices optionnels peuvent être passés en un appui pendant la séance.</p>`;
+  $("prevBtn").disabled = true; $("nextBtn").disabled = true;
+  const mb = $("mainBtn"); mb.className = "btn primary"; mb.textContent = "Commencer la séance";
+  mb.onclick = () => beginSession(r);
+}
+function beginSession(r) {
+  beep(660, 0.05, 0.01);
+  run.steps = buildSteps(r); run.idx = 0; run.startedAt = Date.now();
+  keepAwake();
+  enterStep();
+  window.scrollTo(0, 0);
+}
+function quit() {
+  stopTimer();
+  run.routine = null; run.steps = []; releaseAwake();
+  $("player").hidden = true; $("home").hidden = false;
+  renderHome();
+}
+$("quitBtn").addEventListener("click", quit);
+
+function stopTimer() { if (run.timer && run.timer.int) clearInterval(run.timer.int); run.timer = null; }
+function setTimer(total, phase, autorun) {
+  stopTimer();
+  run.timer = { total, remaining: total, running: false, phase, endAt: 0, int: null, lastWhole: Math.ceil(total) };
+  if (autorun) resumeTimer();
+}
+function resumeTimer() {
+  const t = run.timer; if (!t || t.running) return;
+  t.running = true; t.endAt = Date.now() + t.remaining * 1000;
+  t.int = setInterval(tick, 100);
+  if (t.phase === "work") beep(784, 0.15);
+  render();
+}
+function pauseTimer() {
+  const t = run.timer; if (!t || !t.running) return;
+  t.remaining = Math.max(0, (t.endAt - Date.now()) / 1000); t.running = false;
+  clearInterval(t.int); t.int = null; render();
+}
+function tick() {
+  const t = run.timer; if (!t) return;
+  t.remaining = Math.max(0, (t.endAt - Date.now()) / 1000);
+  const whole = Math.ceil(t.remaining);
+  if (whole !== t.lastWhole) {
+    t.lastWhole = whole;
+    if (whole > 0 && whole <= 3) beep(t.phase === "rest" ? 660 : 880, 0.1);
+  }
+  if (t.remaining <= 0) { clearInterval(t.int); t.int = null; t.running = false; onTimerEnd(); return; }
+  updateTimerView();
+}
+function onTimerEnd() {
+  const t = run.timer;
+  if (t.phase === "prep") { setTimer(curStep().ex.hold, "work", true); render(); return; }
+  endBeep();
+  if (t.phase === "work") { next(); return; }
+  if (t.phase === "rest") { next(); return; }
+}
+function curStep() { return run.steps[run.idx]; }
+function enterStep() {
+  stopTimer();
+  const st = curStep();
+  if (!st) { finish(); return; }
+  if (st.type === "rest") setTimer(st.dur, "rest", true);
+  else if (st.ex.hold) {
+    if (settings.auto) setTimer(5, "prep", true);
+    else setTimer(st.ex.hold, "work", false);
+  }
+  render();
+}
+function next() { if (run.idx < run.steps.length - 1) { run.idx++; enterStep(); } else finish(); }
+function prev() {
+  // revient à l'étape de travail précédente
+  let i = run.idx - 1;
+  while (i > 0 && run.steps[i].type === "rest") i--;
+  run.idx = Math.max(0, i); enterStep();
+}
+function skipExercise() {
+  const ei = curStep().ei; let i = run.idx;
+  while (i < run.steps.length && run.steps[i].ei === ei) i++;
+  if (i >= run.steps.length) { finish(); return; }
+  // saute aussi la transition éventuelle pour arriver directement au prochain exercice
+  run.idx = i; enterStep();
+}
+function finish() {
+  stopTimer(); releaseAwake();
+  const r = run.routine;
+  const d = new Date();
+  store.set("last:" + r.id, d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }));
+  const mins = Math.round((Date.now() - run.startedAt) / 60000);
+  $("counter").textContent = "";
+  $("bar").style.width = "100%";
+  $("stage").innerHTML = `<div class="done"><div class="big">Séance terminée</div><p class="lead">${r.name} · ${mins} min</p><p class="note">Bravo. Pense à noter tes sensations dans Strava.</p></div>`;
+  $("prevBtn").disabled = true; $("nextBtn").disabled = true;
+  const mb = $("mainBtn"); mb.className = "btn primary"; mb.textContent = "Retour aux routines"; mb.onclick = quit;
+  endBeep();
+}
+$("prevBtn").addEventListener("click", () => prev());
+$("nextBtn").addEventListener("click", () => next());
+
+function workIndexInfo() {
+  const st = curStep();
+  return { exNum: st.ei + 1, exTotal: run.routine.ex.length };
+}
+function nextWorkStep() {
+  for (let i = run.idx + 1; i < run.steps.length; i++) if (run.steps[i].type === "work") return run.steps[i];
+  return null;
+}
+function workLabel(st) {
+  const ex = st.ex;
+  let s = ex.name;
+  const bits = [];
+  if (ex.sets > 1) bits.push("série " + st.set + "/" + ex.sets);
+  if (st.side) bits.push(sideText(ex, st.side));
+  return bits.length ? s + " · " + bits.join(", ") : s;
+}
+function sideText(ex, side) {
+  const w = ex.sideWord || "côté";
+  const masc = w === "pied" || w === "côté";
+  return w + " " + (side === "gauche" ? "gauche" : (masc ? "droit" : "droite"));
+}
+
+const RING = 2 * Math.PI * 54;
+function timerHTML(resting) {
+  return `<div class="timer${resting ? " resting" : ""}" id="timerBox"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="54"/><circle class="arc" id="arc" cx="60" cy="60" r="54" stroke-dasharray="${RING}" stroke-dashoffset="0"/></svg><div class="digits" id="digits"></div><div class="sub" id="timerSub"></div></div>`;
+}
+function updateTimerView() {
+  const t = run.timer; if (!t) return;
+  const d = $("digits"); if (d) d.textContent = fmt(t.remaining);
+  const a = $("arc"); if (a) a.setAttribute("stroke-dashoffset", String(RING * (1 - t.remaining / t.total)));
+  const sub = $("timerSub"); if (sub) sub.textContent = t.phase === "prep" ? "Prépare-toi" : (t.running ? "" : "En pause");
+}
+function render() {
+  const st = curStep(); if (!st) return;
+  const { exNum, exTotal } = workIndexInfo();
+  $("counter").textContent = "Exercice " + exNum + " / " + exTotal;
+  $("bar").style.width = Math.round((run.idx / run.steps.length) * 100) + "%";
+  $("prevBtn").disabled = run.idx === 0;
+  $("nextBtn").disabled = false;
+  const mb = $("mainBtn"); mb.onclick = null;
+  const stage = $("stage");
+
+  if (st.type === "rest") {
+    const nx = nextWorkStep();
+    stage.innerHTML = `<div class="restlabel">${st.label}</div>${timerHTML(true)}<p class="nextup">Ensuite : <strong>${nx ? workLabel(nx) : "fin"}</strong></p>${nx && nx.ex.optional && st.transition ? `<p class="nextup">${nx.ex.optional}</p>` : ""}<div class="row2"><button type="button" class="small" id="plus15">+15 s</button></div>`;
+    $("plus15").onclick = () => { const t = run.timer; if (!t) return; t.total += 15; if (t.running) t.endAt += 15000; else t.remaining += 15; updateTimerView(); };
+    mb.className = "btn primary rest"; mb.textContent = run.timer && run.timer.running ? "Passer le repos" : "Reprendre";
+    mb.onclick = () => { if (run.timer && !run.timer.running) resumeTimer(); else next(); };
+    updateTimerView();
+    return;
+  }
+
+  const ex = st.ex;
+  const chips = [];
+  if (ex.sets > 1) chips.push(`<span class="chip">Série ${st.set} / ${ex.sets}</span>`);
+  if (st.side) chips.push(`<span class="chip side">${sideText(ex, st.side)}</span>`);
+  if (ex.optional) chips.push(`<span class="chip opt">Optionnel · ${ex.optional}</span>`);
+  let body;
+  if (ex.hold) {
+    body = timerHTML(false);
+  } else {
+    const label = ex.repsLabel || (st.side ? "" : "");
+    body = `<div class="reps">${ex.reps}<small>répétitions${label ? " " + label : ""}</small></div>`;
+  }
+  const demo = ex.demo ? `<a href="${ex.demo}" target="_blank" rel="noopener">Voir la démonstration</a>` : "";
+  const fig = FIGS[ex.name] ? `<div class="figbox">${figSVG(ex.name)}<p class="figcap">En violet : la partie qui travaille ou s'étire. En vert : le mouvement.</p></div>` : "";
+  const feel = FEEL[ex.name] ? `<p class="feel"><strong>Tu dois sentir :</strong> ${FEEL[ex.name]}</p>` : "";
+  stage.innerHTML = `<div class="chips">${chips.join("")}</div><h2 class="exname">${ex.name}</h2>${fig}${body}<p class="how">${ex.how}</p>${feel}<p class="tip"><strong>À surveiller :</strong> ${ex.tip}</p><div class="row2">${demo ? `<span>${demo}</span>` : ""}<button type="button" class="small" id="skipEx">Passer l'exercice</button></div>`;
+  $("skipEx").onclick = skipExercise;
+
+  if (ex.hold) {
+    const t = run.timer;
+    mb.className = "btn primary";
+    if (t.phase === "prep") { mb.textContent = "Commencer"; mb.onclick = () => { setTimer(ex.hold, "work", true); render(); }; }
+    else if (t.running) { mb.textContent = "Pause"; mb.onclick = pauseTimer; }
+    else { mb.textContent = t.remaining < t.total ? "Reprendre" : "Démarrer"; mb.onclick = resumeTimer; }
+    updateTimerView();
+  } else {
+    mb.className = "btn primary";
+    const isLastOfAll = run.idx === run.steps.length - 1;
+    mb.textContent = isLastOfAll ? "Terminer" : (st.side === "gauche" ? "Fait, à droite" : "Série faite");
+    mb.onclick = () => { beep(784, 0.08); next(); };
+  }
+}
+
+document.addEventListener("keydown", (e) => {
+  if ($("player").hidden) return;
+  if (e.target && (e.target.tagName === "INPUT")) return;
+  if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); $("mainBtn").click(); }
+  else if (!run.steps.length) return;
+  else if (e.code === "ArrowRight") next();
+  else if (e.code === "ArrowLeft" && run.idx > 0) prev();
+});
+
+renderHome();
+if ("serviceWorker" in navigator) { window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); }); }
+</script>
+</body>
+</html>
